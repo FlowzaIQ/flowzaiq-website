@@ -91,8 +91,7 @@
     }
 
     /* ── BASE ───────────────────────────────────── */
-    html { scroll-behavior: smooth; }
-    :target { scroll-margin-top: 76px; }
+    html { scroll-behavior: auto; }
 
     body {
       font-family: 'Geist', Arial, sans-serif;
@@ -683,12 +682,12 @@
 <!-- ── NAV ───────────────────────────────────────── -->
 <nav id="nav" role="navigation" aria-label="Main">
   <div class="nav-pill">
-    <a href="#" class="nav-logo" aria-label="Flowza IQ — home">
+    <a href="/" class="nav-logo" data-nav-target="top" aria-label="Flowza IQ — home">
       <span class="nav-logo-text">flowzaiq.</span>
     </a>
     <div class="nav-links">
-      <a href="#services" class="nav-link">Services</a>
-      <a href="#faq" class="nav-link">FAQ</a>
+      <a href="/services" class="nav-link" data-nav-target="services">Services</a>
+      <a href="/faq" class="nav-link" data-nav-target="faq">FAQ</a>
       <a href="https://cal.com/flowzaiqbooking/30min" target="_blank" rel="noopener noreferrer" class="nav-link nav-link-cta">Book a Call</a>
     </div>
     <button class="theme-toggle" id="theme-btn" aria-label="Toggle dark mode">
@@ -720,7 +719,7 @@
         <a href="https://cal.com/flowzaiqbooking/30min" target="_blank" rel="noopener noreferrer" class="btn-primary">
           Book a Free Call →
         </a>
-        <a href="#services" class="btn-secondary">
+        <a href="/services" class="btn-secondary" data-nav-target="services">
           Our services
         </a>
       </div>
@@ -936,13 +935,13 @@
       <div class="footer-cols">
         <div class="footer-col">
           <div class="footer-col-h">Services</div>
-          <a href="#services">AI &amp; Automation</a>
-          <a href="#services">Outbound Calling</a>
-          <a href="#services">Meta Marketing</a>
+          <a href="/services" data-nav-target="services">AI &amp; Automation</a>
+          <a href="/services" data-nav-target="services">Outbound Calling</a>
+          <a href="/services" data-nav-target="services">Meta Marketing</a>
         </div>
         <div class="footer-col">
           <div class="footer-col-h">Company</div>
-          <a href="#faq">FAQ</a>
+          <a href="/faq" data-nav-target="faq">FAQ</a>
           <a href="mailto:raza@flowzaiq.com">Contact</a>
           <a href="https://cal.com/flowzaiqbooking/30min" target="_blank" rel="noopener noreferrer">Book a Call</a>
         </div>
@@ -1093,6 +1092,53 @@
     scrollTrigger: { trigger: '#footer', start: 'top 92%' },
     opacity: 0, duration: 0.55, ease: 'power2.out',
   });
+
+  /* ── SECTION NAVIGATION (clean URLs + correct scroll) ── */
+  const NAV_HEIGHT = 68;
+  const pathToSection = { '/services': 'services', '/faq': 'faq' };
+  const sectionToPath = { services: '/services', faq: '/faq', top: '/' };
+
+  function scrollToSection(id) {
+    if (id === 'top') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const el = document.getElementById(id);
+    if (!el) return;
+    // Use GSAP ScrollTrigger's start value when available — it accounts for pinning.
+    // Otherwise fall back to the pin spacer's document position.
+    const trigger = ScrollTrigger.getAll().find(t => t.trigger === el);
+    if (trigger) {
+      window.scrollTo({ top: trigger.start, behavior: 'smooth' });
+    } else {
+      const spacer = el.closest('.gsap-pin-spacer') || el;
+      let top = 0, node = spacer;
+      while (node) { top += node.offsetTop; node = node.offsetParent; }
+      window.scrollTo({ top: Math.max(0, top - NAV_HEIGHT), behavior: 'smooth' });
+    }
+  }
+
+  document.addEventListener('click', e => {
+    const link = e.target.closest('[data-nav-target]');
+    if (!link) return;
+    e.preventDefault();
+    const target = link.getAttribute('data-nav-target');
+    scrollToSection(target);
+    const path = sectionToPath[target] || '/';
+    history.pushState({ section: target }, '', path);
+  });
+
+  window.addEventListener('popstate', e => {
+    const id = e.state?.section;
+    if (id) scrollToSection(id);
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // Handle direct load of a clean URL (e.g. /services)
+  const onLoadSection = pathToSection[location.pathname];
+  if (onLoadSection) {
+    setTimeout(() => scrollToSection(onLoadSection), 200);
+  }
 
   /* ── LAYERED PANEL PINNING ────────────────────────── */
   // Pin hero, services, faq only — motion-cta and footer scroll freely
